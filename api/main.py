@@ -145,22 +145,44 @@ def delete_one_resource(resource_id: int, db: Session = Depends(get_db)):
     return resources.delete(db=db, resource_id=resource_id)
 
 # Order Details Endpoints
-@app.post("/order_details/", response_model=schemas.OrderDetail, tags=["Order Details"])
+@app.post("/order_details/", response_model=schemas.OrderDetail, tags=["OrderDetails"])
 def create_order_detail(order_detail: schemas.OrderDetailCreate, db: Session = Depends(get_db)):
+    # Check if the order and sandwich exist before creating the order detail
+    order = db.query(models.Order).filter(models.Order.id == order_detail.order_id).first()
+    sandwich = db.query(models.Sandwich).filter(models.Sandwich.id == order_detail.sandwich_id).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if not sandwich:
+        raise HTTPException(status_code=404, detail="Sandwich not found")
+
     return order_details.create(db=db, order_detail=order_detail)
 
-@app.get("/order_details/", response_model=list[schemas.OrderDetail], tags=["Order Details"])
+@app.get("/order_details/", response_model=list[schemas.OrderDetail], tags=["OrderDetails"])
 def read_order_details(db: Session = Depends(get_db)):
     return order_details.read_all(db)
 
-@app.get("/order_details/{order_detail_id}", response_model=schemas.OrderDetail, tags=["Order Details"])
-def read_one_order_detail(order_detail_id: int, db: Session = Depends(get_db)):
-    return order_details.read_one(db, order_detail_id=order_detail_id)
 
-@app.put("/order_details/{order_detail_id}", response_model=schemas.OrderDetail, tags=["Order Details"])
+@app.get("/order_details/{order_detail_id}", response_model=schemas.OrderDetail, tags=["OrderDetails"])
+def read_one_order_detail(order_detail_id: int, db: Session = Depends(get_db)):
+    order_detail = order_details.read_one(db, order_detail_id=order_detail_id)
+    if order_detail is None:
+        raise HTTPException(status_code=404, detail="OrderDetail not found")
+    return order_detail
+
+
+@app.put("/order_details/{order_detail_id}", response_model=schemas.OrderDetail, tags=["OrderDetails"])
 def update_one_order_detail(order_detail_id: int, order_detail: schemas.OrderDetailUpdate, db: Session = Depends(get_db)):
+    order_detail_db = order_details.read_one(db, order_detail_id=order_detail_id)
+    if order_detail_db is None:
+        raise HTTPException(status_code=404, detail="OrderDetail not found")
     return order_details.update(db=db, order_detail=order_detail, order_detail_id=order_detail_id)
 
-@app.delete("/order_details/{order_detail_id}", tags=["Order Details"])
+
+@app.delete("/order_details/{order_detail_id}", tags=["OrderDetails"])
 def delete_one_order_detail(order_detail_id: int, db: Session = Depends(get_db)):
+    order_detail = order_details.read_one(db, order_detail_id=order_detail_id)
+    if order_detail is None:
+        raise HTTPException(status_code=404, detail="OrderDetail not found")
     return order_details.delete(db=db, order_detail_id=order_detail_id)
